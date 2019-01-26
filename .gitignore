@@ -3,3 +3,7 @@
 ################################################################################
 
 /Samples/DotNet/ErpNet.DomainApi.Samples/ErpNet.DomainApi.Samples/obj
+/Samples/DotNet/ErpNet.DomainApi.Samples/ErpNet.DomainApi.Samples/bin/Debug
+/.vs
+/Samples/DotNet/ErpNet.DomainApi.Samples/.vs/ErpNet.DomainApi.Samples/v15
+/Samples/DotNet/ErpNet.DomainApi.Samples/ErpNet.DomainApi.Samples/ErpNet.DomainApi.Samples.csproj.user
