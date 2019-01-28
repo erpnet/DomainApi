@@ -22,6 +22,27 @@ namespace ErpNet.DomainApi.Samples
                 Console.WriteLine("{0}\t{1}", ((IDictionary<string, object>)p["ProductGroup"])["Code"], p["PartNumber"]);
         }
 
+        public static async Task FilterByReference(ErpSession session)
+        {
+            var productGroup = await session.Client.For("General_Products_ProductGroups")
+               .Filter("Active eq true")
+               .Top(1)
+               .Select("Id")
+               .FindEntryAsync();
+
+            // Use dynamic syntax
+            var products = await session.Client.For("General_Products_Products")
+               .Filter($"ProductGroup eq 'General_Products_ProductGroups({productGroup["Id"]})'")
+               .Top(10)
+               .Expand("ProductGroup")
+               .Select("PartNumber", "ProductGroup/Code")
+               .FindEntriesAsync();
+
+
+            foreach (var p in products)
+                Console.WriteLine("{0}\t{1}", ((IDictionary<string, object>)p["ProductGroup"])["Code"], p["PartNumber"]);
+        }
+
         public static async Task UpdateProduct(ErpSession session)
         {
             var product = await session.Client.For("General_Products_Products")
@@ -95,5 +116,6 @@ namespace ErpNet.DomainApi.Samples
                 .Set(new { newState = "FirmPlanned" })
                 .ExecuteAsync();
         }
+
     }
 }

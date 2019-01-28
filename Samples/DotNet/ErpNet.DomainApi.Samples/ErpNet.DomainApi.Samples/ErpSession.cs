@@ -61,7 +61,7 @@ namespace ErpNet.DomainApi.Samples
                 },
                 OnTrace = (str, o) =>
                 {
-                    //Console.WriteLine(str, o);
+                    Console.WriteLine(str, o);
                 },
                 PayloadFormat = ODataPayloadFormat.Json
                 //IncludeAnnotationsInResults = true
@@ -92,8 +92,20 @@ namespace ErpNet.DomainApi.Samples
         /// The request options.
         /// </value>
         public ErpRequestOptions RequestOptions { get; } = new ErpRequestOptions();
+
+        /// <summary>
+        /// Gets the transaction identifier retrieved with <see cref="BeginTransactionAsync"/>.
+        /// </summary>
+        /// <value>
+        /// The transaction identifier.
+        /// </value>
         public string TransactionId { get; private set; }
 
+        /// <summary>
+        /// Begins a front-end transaction.
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="Exception">Only one front end transaction per session is allowed.</exception>
         public async Task<string> BeginTransactionAsync()
         {
             if (TransactionId != null)
@@ -103,6 +115,12 @@ namespace ErpNet.DomainApi.Samples
             return TransactionId;
         }
 
+        /// <summary>
+        /// Ends the transaction created with <see cref="BeginTransactionAsync"/>.
+        /// </summary>
+        /// <param name="commit">if set to <c>true</c> [commit].</param>
+        /// <returns></returns>
+        /// <exception cref="Exception">There is no current front end transaction.</exception>
         public Task<string> EndTransactionAsync(bool commit = true)
         {
             if (TransactionId == null)
@@ -111,7 +129,11 @@ namespace ErpNet.DomainApi.Samples
             return Client.ExecuteActionAsScalarAsync<string>("EndTransaction", new Dictionary<string, object>() { ["commit"] = commit });
         }
 
-        public async void CloseAsync()
+        /// <summary>
+        /// Closes the session.
+        /// </summary>
+        /// <returns></returns>
+        public async Task CloseAsync()
         {
             if (authorizationHeader != null)
             {
@@ -122,11 +144,17 @@ namespace ErpNet.DomainApi.Samples
                 var uri = serviceRoot.ToString().Replace("/odata", "/Logout").TrimEnd('/');
                 var result = await httpClient.PostAsync(uri, content);
 
-                var json = await result.Content.ReadAsStringAsync();
+                //var json = await result.Content.ReadAsStringAsync();
                 authorizationHeader = null;
             }
         }
 
+        /// <summary>
+        /// Logins the specified user.
+        /// </summary>
+        /// <param name="credentials">The credentials.</param>
+        /// <returns></returns>
+        /// <exception cref="Exception">Invalid user name or password.</exception>
         public async Task<string> LoginAsync(ErpCredentials credentials)
         {
             StringContent content = new StringContent(
@@ -158,9 +186,18 @@ namespace ErpNet.DomainApi.Samples
 
 
 
+        /// <summary>
+        /// Calls <see cref="CloseAsync"/> without await.
+        /// </summary>
         public void Dispose()
         {
-            CloseAsync();
+            CloseAsync().ContinueWith(
+                t =>
+                {
+                    if (t.Exception != null)
+                        Console.WriteLine(t.Exception);
+                },
+                TaskContinuationOptions.OnlyOnFaulted);
         }
     }
 }

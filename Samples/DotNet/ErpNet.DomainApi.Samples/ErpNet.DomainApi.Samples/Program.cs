@@ -27,22 +27,27 @@ namespace ErpNet.DomainApi.Samples
                 Console.WriteLine("Enter password:");
                 var password = ReadPassword();
 
-                Console.WriteLine();
-                Console.WriteLine("Type a sample number and hit Enter to execute it.");
-
-                int i = 1;
-                List<string> methods = new List<string>();
-                foreach (var mi in typeof(Samples).GetTypeInfo().DeclaredMethods)
+                while (true)
                 {
-                    methods.Add(mi.Name);
-                    Console.WriteLine("{0}: {1}", i++, mi.Name);
+                    Console.WriteLine();
+                    Console.WriteLine("Type a sample number and hit Enter to execute it. Type 'exit' to exit the program.");
+
+                    int i = 1;
+                    List<string> methods = new List<string>();
+                    foreach (var mi in typeof(Samples).GetTypeInfo().DeclaredMethods)
+                    {
+                        methods.Add(mi.Name);
+                        Console.WriteLine("{0}: {1}", i++, mi.Name);
+                    }
+
+                    var line = Console.ReadLine();
+                    if (line == "exit")
+                        return;
+                    int k = int.Parse(line);
+
+
+                    Task.Run(async () => await ExecuteSamples(methods[k - 1], serviceRoot, userName, password)).Wait();
                 }
-
-                var line = Console.ReadLine();
-                int k = int.Parse(line);
-
-
-                Task.Run(async () => await ExecuteSamples(methods[k - 1], serviceRoot, userName, password)).Wait();
             }
             catch (Exception ex)
             {
