@@ -62,25 +62,25 @@ namespace ErpNet.DomainApi.Samples
 
         public static async Task FrontEndTransaction(ErpSession session)
         {
-            await session.BeginTransactionAsync();
+            var tr = await session.BeginTransactionAsync();
 
-            var order = await session.Client.For("Crm_Sales_SalesOrders")
+            var order = await tr.Client.For("Crm_Sales_SalesOrders")
                 .Filter("DocumentDate ge 2012-01-01T00:00:00Z and State eq 'FirmPlanned'")
                 .Top(1)
                 .FindEntryAsync();
 
-            var customer = await session.Client.For("Crm_Customers")
+            var customer = await tr.Client.For("Crm_Customers")
                 .Top(1)
                 .FindEntryAsync();
 
-            await session.Client.For("Crm_Sales_SalesOrders")
+            await tr.Client.For("Crm_Sales_SalesOrders")
                 .Key(order)
                 .Set(new { Customer = customer })
                 .UpdateEntryAsync();
 
             // Get the changes made by POST, PATCH and DELETE requests for the current front-end transaction.
             // Only the changes made after the last call of GenChanges are returned.
-            var changes = await session.Client.ExecuteFunctionAsEnumerableAsync("GetChanges", null);
+            var changes = await tr.Client.ExecuteFunctionAsEnumerableAsync("GetChanges", null);
 
             foreach (var item in changes)
             {
@@ -96,8 +96,8 @@ namespace ErpNet.DomainApi.Samples
                 }
             }
 
-            // We don't commit here because this is only test method.
-            await session.EndTransactionAsync(false);
+            // We don't commit here because this is only a test method.
+            await tr.EndTransactionAsync(false);
         }
 
         public static async Task ChangeDocumentState(ErpSession session)

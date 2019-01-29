@@ -12,10 +12,8 @@ namespace ErpNet.DomainApi.Samples
     /// <seealso cref="System.IDisposable" />
     public class ErpSession : IDisposable
     {
-
         string authorizationHeader = null;
-        string lastResponse = null;
-        Uri serviceRoot;
+
         HttpClient httpClient = new HttpClient(new HttpClientHandler()
         {
             ServerCertificateCustomValidationCallback = (a, b, c, d) => true,
@@ -32,16 +30,21 @@ namespace ErpNet.DomainApi.Samples
         /// <param name="serviceRoot">The service root.</param>
         public ErpSession(Uri serviceRoot)
         {
-            this.serviceRoot = serviceRoot;
+            ServiceRoot = serviceRoot;
+            Client = CreateODataClient(this);
+            httpClient.DefaultRequestHeaders.ConnectionClose = false;
+        }
 
-            Client = new ODataClient(new ODataClientSettings()
+        internal static ODataClient CreateODataClient(ErpSession session, string transactionId = null)
+        {
+            var settings = new ODataClientSettings()
             {
-                BaseUri = serviceRoot,
+                BaseUri = session.ServiceRoot,
                 BeforeRequest = (req) =>
                 {
                     //if (req.Content != null)
                     //    req.Content.ReadAsStringAsync().ContinueWith(t => Console.WriteLine(t.Result));
-                    var options = RequestOptions.ToString();
+                    var options = session.RequestOptions.ToString();
                     if (!string.IsNullOrEmpty(options))
                     {
                         if (!string.IsNullOrEmpty(req.RequestUri.Query))
@@ -50,14 +53,19 @@ namespace ErpNet.DomainApi.Samples
                             options = "?options=" + options;
                         req.RequestUri = new Uri(req.RequestUri + options);
                     }
-                    if (authorizationHeader != null)
-                        req.Headers.Add("Authorization", authorizationHeader);
-                    if (TransactionId != null)
-                        req.Headers.Add("TransactionId", TransactionId);
+                    if (session.authorizationHeader != null)
+                        req.Headers.Add("Authorization", session.authorizationHeader);
+                    if (transactionId != null)
+                        req.Headers.Add("TransactionId", transactionId);
                 },
                 AfterResponse = async (resp) =>
                 {
-                    lastResponse = await resp.Content.ReadAsStringAsync();
+
+                    if (session.Metadata == null && resp.RequestMessage.RequestUri.ToString().Contains("$metadata"))
+                    {
+                        session.Metadata = await resp.Content.ReadAsStringAsync();
+                    }
+
                 },
                 OnTrace = (str, o) =>
                 {
@@ -65,10 +73,19 @@ namespace ErpNet.DomainApi.Samples
                 },
                 PayloadFormat = ODataPayloadFormat.Json
                 //IncludeAnnotationsInResults = true
-            });
-            httpClient.DefaultRequestHeaders.ConnectionClose = false;
+            };
+            if (session.Metadata != null)
+                settings.MetadataDocument = session.Metadata;
+            return new ODataClient(settings);
         }
 
+        /// <summary>
+        /// Gets the ODATA service root.
+        /// </summary>
+        /// <value>
+        /// The service root.
+        /// </value>
+        public Uri ServiceRoot { get; }
         /// <summary>
         /// Gets the <see cref="Simple.OData.Client"/> instance used to execute queries to the API.
         /// </summary>
@@ -78,12 +95,12 @@ namespace ErpNet.DomainApi.Samples
         public ODataClient Client { get; }
 
         /// <summary>
-        /// Gets the last response as a string.
+        /// Gets the $metadata xml.
         /// </summary>
         /// <value>
         /// The last response.
         /// </value>
-        public string LastResponse => lastResponse;
+        public string Metadata { get; private set; }
 
         /// <summary>
         /// Gets the request options used for this session.
@@ -93,41 +110,19 @@ namespace ErpNet.DomainApi.Samples
         /// </value>
         public ErpRequestOptions RequestOptions { get; } = new ErpRequestOptions();
 
-        /// <summary>
-        /// Gets the transaction identifier retrieved with <see cref="BeginTransactionAsync"/>.
-        /// </summary>
-        /// <value>
-        /// The transaction identifier.
-        /// </value>
-        public string TransactionId { get; private set; }
 
         /// <summary>
         /// Begins a front-end transaction.
         /// </summary>
         /// <returns></returns>
         /// <exception cref="Exception">Only one front end transaction per session is allowed.</exception>
-        public async Task<string> BeginTransactionAsync()
+        public async Task<ErpTransaction> BeginTransactionAsync()
         {
-            if (TransactionId != null)
-                throw new Exception("Only one front end transaction per session is allowed.");
-
-            TransactionId = await Client.ExecuteActionAsScalarAsync<string>("BeginTransaction", new Dictionary<string, object>());
-            return TransactionId;
+            var transactionId = await Client.ExecuteActionAsScalarAsync<string>("BeginTransaction", new Dictionary<string, object>());
+            return new ErpTransaction(this, transactionId);
         }
 
-        /// <summary>
-        /// Ends the transaction created with <see cref="BeginTransactionAsync"/>.
-        /// </summary>
-        /// <param name="commit">if set to <c>true</c> [commit].</param>
-        /// <returns></returns>
-        /// <exception cref="Exception">There is no current front end transaction.</exception>
-        public Task<string> EndTransactionAsync(bool commit = true)
-        {
-            if (TransactionId == null)
-                throw new Exception("There is no current front end transaction.");
 
-            return Client.ExecuteActionAsScalarAsync<string>("EndTransaction", new Dictionary<string, object>() { ["commit"] = commit });
-        }
 
         /// <summary>
         /// Closes the session.
@@ -141,7 +136,7 @@ namespace ErpNet.DomainApi.Samples
                 content.Headers.ContentType.MediaType = "application/json";
 
 
-                var uri = serviceRoot.ToString().Replace("/odata", "/Logout").TrimEnd('/');
+                var uri = ServiceRoot.ToString().Replace("/odata", "/Logout").TrimEnd('/');
                 var result = await httpClient.PostAsync(uri, content);
 
                 //var json = await result.Content.ReadAsStringAsync();
@@ -164,7 +159,7 @@ namespace ErpNet.DomainApi.Samples
                 credentials.Password,
                 credentials.Language));
             content.Headers.ContentType.MediaType = "application/json";
-            var uri = serviceRoot.ToString().Replace("/odata", "/Login").TrimEnd('/');
+            var uri = ServiceRoot.ToString().Replace("/odata", "/Login").TrimEnd('/');
 
             HttpRequestMessage msg = new HttpRequestMessage()
             {
