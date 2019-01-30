@@ -36,11 +36,21 @@ namespace ErpNet.DomainApi.Samples
         /// Ends the transaction.
         /// </summary>
         /// <param name="commit">if set to <c>true</c> [commit].</param>
-        /// <returns></returns>
-        /// <exception cref="Exception">There is no current front end transaction.</exception>
+        /// <returns>The transaction id</returns>        
         public Task<string> EndTransactionAsync(bool commit = true)
         {
             return Client.ExecuteActionAsScalarAsync<string>("EndTransaction", new Dictionary<string, object>() { ["commit"] = commit });
+        }
+
+        /// <summary>
+        /// Creates adjustments for modified released documents. 
+        /// The adjusted documents are created in separate transaction and their state is changed to 'Adjustment'. 
+        /// The method does not commit or rollback the current front-end transaction.
+        /// </summary>
+        /// <exception cref="AggregateException">Error while applying adjusting documents. Note that adjusting documents are created but they may be at state 'New'.</exception>
+        public Task CreateAdjustmentDocuments()
+        {
+            return Client.ExecuteActionAsScalarAsync<string>("CreateAdjustmentDocuments", null);
         }
     }
 }

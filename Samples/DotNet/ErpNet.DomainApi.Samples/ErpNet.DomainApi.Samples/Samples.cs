@@ -117,5 +117,48 @@ namespace ErpNet.DomainApi.Samples
                 .ExecuteAsync();
         }
 
+        public static async Task CreateDocumentAdjustment(ErpSession session)
+        {
+            // Begin a front-end transaction.
+            var tr = await session.BeginTransactionAsync();
+
+            // Ordinary update for released documents is not allowed. 
+            // The update is made through adjustment documents.
+            // The API provides method to simplify the creation of adjustment documents: CreateAdjusmentDocuments.
+
+            // Load a sales order that is on state Released.
+            var order = await tr.Client.For("Crm_Sales_SalesOrders")
+                .Key(Guid.Parse("e4528383-cb1a-4395-8eec-db9b87d78333"))
+                .Select("Id,Lines")
+                .Expand("Lines")
+                .Top(1)
+                .FindEntryAsync();
+
+            var lines = (IEnumerable<IDictionary<string, object>>)order["Lines"];
+            // Update some order lines. 
+            // If we commit the front-end transaction an error will be thrown because editing released documents is not allowed.            
+            // However we'll update the line and we'll not commit the transaction.
+            foreach (var line in lines)
+            {
+                // Quantity is complex type consisted of Value and Unit.
+                var quantity = (IDictionary<string, object>)line["Quantity"];
+                decimal value = (decimal)quantity["Value"];
+                string unit = (string)quantity["Unit"];
+                value += 5;
+
+                // Update the line
+                await tr.Client.For("Crm_Sales_SalesOrderLines")
+                    .Key(line["Id"])
+                    .Set(new { Quantity = new { Value = value, Unit = unit } })
+                    .UpdateEntryAsync();
+            }
+
+            // Call CreateAdjustmentDocuments on the transaction.
+            // This method will create and apply adjustment documents for the modified released documents in the transaction.
+            var result = await tr.Client.ExecuteActionAsScalarAsync<string>("CreateAdjustmentDocuments", null);
+
+            // Rollback the front-end transaction.
+            await tr.EndTransactionAsync(false);
+        }
     }
 }
