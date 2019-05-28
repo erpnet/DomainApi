@@ -52,7 +52,17 @@ namespace ErpNet.DomainApi.Samples
             catch (Exception ex)
             {
                 Console.WriteLine("ERROR");
-                Console.WriteLine(ex.Message);
+                var e = ex;
+                while (e != null)
+                {
+                    Console.WriteLine(e.Message);
+
+                    if (e is AggregateException ae)
+                        foreach (var ie in ae.InnerExceptions)
+                            Console.WriteLine(e.Message);
+
+                    e = e.InnerException;
+                }
             }
             Console.WriteLine("Type any key to exit");
             Console.ReadKey();

@@ -114,12 +114,18 @@ namespace ErpNet.DomainApi.Samples
         /// <summary>
         /// Begins a front-end transaction.
         /// </summary>
+        /// <param name="trackChanges">if set to <c>true</c> track changes is enabled. That means that functions GetChanges and WaitForChanges can be used.</param>
         /// <returns></returns>
         /// <exception cref="Exception">Only one front end transaction per session is allowed.</exception>
-        public async Task<ErpTransaction> BeginTransactionAsync()
+        public async Task<ErpFrontEndTransaction> BeginFrontEndTransactionAsync(bool trackChanges)
         {
-            var transactionId = await Client.ExecuteActionAsScalarAsync<string>("BeginTransaction", new Dictionary<string, object>());
-            return new ErpTransaction(this, transactionId);
+            var transactionId = await Client.ExecuteActionAsScalarAsync<string>(
+                "BeginFrontEndTransaction",
+                new Dictionary<string, object>()
+                {
+                    ["trackChanges"] = trackChanges
+                });
+            return new ErpFrontEndTransaction(this, transactionId);
         }
 
 

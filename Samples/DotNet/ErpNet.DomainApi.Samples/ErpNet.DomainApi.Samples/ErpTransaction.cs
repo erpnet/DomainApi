@@ -6,11 +6,11 @@ using System.Threading.Tasks;
 namespace ErpNet.DomainApi.Samples
 {
     /// <summary>
-    /// Represents an API transaction.
+    /// Represents an API front-end transaction.
     /// </summary>
-    public class ErpTransaction
+    public class ErpFrontEndTransaction
     {
-        public ErpTransaction(ErpSession session, string transactionId)
+        public ErpFrontEndTransaction(ErpSession session, string transactionId)
         {
             TransactionId = transactionId;
             Client = ErpSession.CreateODataClient(session, transactionId);
@@ -37,9 +37,11 @@ namespace ErpNet.DomainApi.Samples
         /// </summary>
         /// <param name="commit">if set to <c>true</c> [commit].</param>
         /// <returns>The transaction id</returns>        
-        public Task<string> EndTransactionAsync(bool commit = true)
+        public Task<string> EndFrontEndTransactionAsync(bool commit = true)
         {
-            return Client.ExecuteActionAsScalarAsync<string>("EndTransaction", new Dictionary<string, object>() { ["commit"] = commit });
+            return Client.ExecuteActionAsScalarAsync<string>(
+                "EndFrontEndTransaction",
+                new Dictionary<string, object>() { ["commit"] = commit });
         }
 
         /// <summary>

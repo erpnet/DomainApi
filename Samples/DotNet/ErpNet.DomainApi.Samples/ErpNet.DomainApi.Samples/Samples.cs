@@ -62,7 +62,7 @@ namespace ErpNet.DomainApi.Samples
 
         public static async Task FrontEndTransaction(ErpSession session)
         {
-            var tr = await session.BeginTransactionAsync();
+            var tr = await session.BeginFrontEndTransactionAsync(true);
 
             var order = await tr.Client.For("Crm_Sales_SalesOrders")
                 .Filter("DocumentDate ge 2012-01-01T00:00:00Z and State eq 'FirmPlanned'")
@@ -80,24 +80,23 @@ namespace ErpNet.DomainApi.Samples
 
             // Get the changes made by POST, PATCH and DELETE requests for the current front-end transaction.
             // Only the changes made after the last call of GenChanges are returned.
-            var changes = await tr.Client.ExecuteFunctionAsEnumerableAsync("GetChanges", null);
+            var changes = await tr.Client.ExecuteFunctionAsSingleAsync("GetChanges", null);
 
-            foreach (var item in changes)
+            foreach (var operationEntry in changes)
             {
-                foreach (var ch in item)
+                // operationEntry.Key is one of: "insert", "update", "delete".
+                // operationEntry.Value is a JSON hash table containing the changed objects divided by entity name and Id.
+                var value = operationEntry.Value;
+                if (value is string json)
                 {
-                    var value = ch.Value;
-                    if (value is string)
-                    {
-                        var jobj = JObject.Parse(ch.Value.ToString());
-                        value = jobj.ToString(Newtonsoft.Json.Formatting.Indented);
-                    }
-                    Console.WriteLine("\r\n{0}:\r\n{1}", ch.Key, value);
+                    var jobj = JObject.Parse(json);
+                    value = jobj.ToString(Newtonsoft.Json.Formatting.Indented);
                 }
+                Console.WriteLine("\r\n{0}:\r\n{1}", operationEntry.Key, value);
             }
 
             // We don't commit here because this is only a test method.
-            await tr.EndTransactionAsync(false);
+            await tr.EndFrontEndTransactionAsync(false);
         }
 
         public static async Task ChangeDocumentState(ErpSession session)
@@ -120,7 +119,7 @@ namespace ErpNet.DomainApi.Samples
         public static async Task CreateDocumentAdjustment(ErpSession session)
         {
             // Begin a front-end transaction.
-            var tr = await session.BeginTransactionAsync();
+            var tr = await session.BeginFrontEndTransactionAsync(false);
 
             // Ordinary update for released documents is not allowed. 
             // The update is made through adjustment documents.
@@ -158,7 +157,7 @@ namespace ErpNet.DomainApi.Samples
             var result = await tr.Client.ExecuteActionAsScalarAsync<string>("CreateAdjustmentDocuments", null);
 
             // Rollback the front-end transaction.
-            await tr.EndTransactionAsync(false);
+            await tr.EndFrontEndTransactionAsync(false);
         }
     }
 }
