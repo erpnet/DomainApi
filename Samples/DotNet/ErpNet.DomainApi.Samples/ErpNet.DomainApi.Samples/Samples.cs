@@ -62,7 +62,7 @@ namespace ErpNet.DomainApi.Samples
 
         public static async Task FrontEndTransaction(ErpSession session)
         {
-            var tr = await session.BeginFrontEndTransactionAsync(true);
+            var tr = await session.BeginTransactionAsync(ErpTransactionDataModel.FrontEnd, true);
 
             var order = await tr.Client.For("Crm_Sales_SalesOrders")
                 .Filter("DocumentDate ge 2012-01-01T00:00:00Z and State eq 'FirmPlanned'")
@@ -96,7 +96,7 @@ namespace ErpNet.DomainApi.Samples
             }
 
             // We don't commit here because this is only a test method.
-            await tr.EndFrontEndTransactionAsync(false);
+            await tr.EndTransactionAsync(false);
         }
 
         public static async Task ChangeDocumentState(ErpSession session)
@@ -119,7 +119,7 @@ namespace ErpNet.DomainApi.Samples
         public static async Task CreateDocumentAdjustment(ErpSession session)
         {
             // Begin a front-end transaction.
-            var tr = await session.BeginFrontEndTransactionAsync(false);
+            var tr = await session.BeginTransactionAsync(ErpTransactionDataModel.Common, false);
 
             // Ordinary update for released documents is not allowed. 
             // The update is made through adjustment documents.
@@ -157,7 +157,7 @@ namespace ErpNet.DomainApi.Samples
             var result = await tr.Client.ExecuteActionAsScalarAsync<string>("CreateAdjustmentDocuments", null);
 
             // Rollback the front-end transaction.
-            await tr.EndFrontEndTransactionAsync(false);
+            await tr.EndTransactionAsync(false);
         }
     }
 }

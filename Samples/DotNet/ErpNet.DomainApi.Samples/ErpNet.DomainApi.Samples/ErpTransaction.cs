@@ -8,9 +8,9 @@ namespace ErpNet.DomainApi.Samples
     /// <summary>
     /// Represents an API front-end transaction.
     /// </summary>
-    public class ErpFrontEndTransaction
+    public class ErpTransaction
     {
-        public ErpFrontEndTransaction(ErpSession session, string transactionId)
+        public ErpTransaction(ErpSession session, string transactionId)
         {
             TransactionId = transactionId;
             Client = ErpSession.CreateODataClient(session, transactionId);
@@ -37,10 +37,10 @@ namespace ErpNet.DomainApi.Samples
         /// </summary>
         /// <param name="commit">if set to <c>true</c> [commit].</param>
         /// <returns>The transaction id</returns>        
-        public Task<string> EndFrontEndTransactionAsync(bool commit = true)
+        public Task<string> EndTransactionAsync(bool commit = true)
         {
             return Client.ExecuteActionAsScalarAsync<string>(
-                "EndFrontEndTransaction",
+                "EndTransaction",
                 new Dictionary<string, object>() { ["commit"] = commit });
         }
 

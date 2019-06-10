@@ -48,6 +48,7 @@
     <Compile Include="ErpRequestOptions.cs" />
     <Compile Include="ErpSession.cs" />
     <Compile Include="ErpTransaction.cs" />
+    <Compile Include="ErpTransactionDataModel.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Samples.cs" />
