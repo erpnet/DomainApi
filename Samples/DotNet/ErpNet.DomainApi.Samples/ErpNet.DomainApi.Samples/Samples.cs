@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json.Linq;
+using Simple.OData.Client;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -158,6 +159,38 @@ namespace ErpNet.DomainApi.Samples
 
             // Rollback the front-end transaction.
             await tr.EndTransactionAsync(false);
+        }
+
+        public static async Task UseBatch(ErpSession session)
+        {
+            // Update the quantity of several sales order lines in a batch.
+            var order = await session.Client.For("Crm_Sales_SalesOrders")
+               .Key(Guid.Parse("cc661805-a4be-4ad3-a2a5-08570c7d12f7"))
+               .Select("Id,Lines")
+               .Expand("Lines")
+               .Top(1)
+               .FindEntryAsync();
+
+
+            var lines = (IEnumerable<IDictionary<string, object>>)order["Lines"];
+            var batch = new ODataBatch(session.Client);
+
+            foreach (var line in lines)
+            {
+                // Quantity is complex type consisted of Value and Unit.
+                var quantity = (IDictionary<string, object>)line["Quantity"];
+                decimal value = (decimal)quantity["Value"];
+                string unit = (string)quantity["Unit"];
+                value += 5;
+
+                // Update the line
+                batch += c => c.For("Crm_Sales_SalesOrderLines")
+                    .Key(line["Id"])
+                    .Set(new { Quantity = new { Value = value, Unit = unit } })
+                    .UpdateEntryAsync();
+            }
+
+            await batch.ExecuteAsync();
         }
     }
 }
