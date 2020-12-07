@@ -40,10 +40,13 @@ namespace ErpNet.DomainApi.Samples
             var settings = new ODataClientSettings()
             {
                 BaseUri = session.ServiceRoot,
+                IncludeAnnotationsInResults = true,                
+                IgnoreUnmappedProperties = true,
                 BeforeRequest = (req) =>
                 {
-                    //if (req.Content != null)
-                    //    req.Content.ReadAsStringAsync().ContinueWith(t => Console.WriteLine(t.Result));
+                    // Debug POST/PATCH requests
+                    if (req.Content != null)
+                        req.Content.ReadAsStringAsync().ContinueWith(t => Console.WriteLine(t.Result));
                     var options = session.RequestOptions.ToString();
                     if (!string.IsNullOrEmpty(options))
                     {
@@ -112,7 +115,7 @@ namespace ErpNet.DomainApi.Samples
 
 
         /// <summary>
-        /// Begins a front-end transaction.
+        /// Begins an API transaction.
         /// </summary>
         /// <param name="trackChanges">if set to <c>true</c> track changes is enabled. That means that functions GetChanges and WaitForChanges can be used.</param>
         /// <returns></returns>
@@ -160,7 +163,7 @@ namespace ErpNet.DomainApi.Samples
         public async Task<string> LoginAsync(ErpCredentials credentials)
         {
             StringContent content = new StringContent(
-                string.Format("{{app:'{0}',user:'{1}',pass:'{2}',ln:'{3}'}}",
+                string.Format("{{\"app\":\"{0}\",\"user\":\"{1}\",\"pass\":\"{2}\",\"ln\":\"{3}\"}}",
                 credentials.ApplicationName,
                 credentials.UserName,
                 credentials.Password,
@@ -176,11 +179,21 @@ namespace ErpNet.DomainApi.Samples
             };
             msg.Headers.ExpectContinue = false;
 
-            var result = await httpClient.SendAsync(msg, HttpCompletionOption.ResponseHeadersRead);
-
-            if (!result.IsSuccessStatusCode)
-                throw new Exception("Invalid user name or password.");
+            var result = await httpClient.SendAsync(msg, HttpCompletionOption.ResponseContentRead);
             var json = await result.Content.ReadAsStringAsync();
+            try
+            {
+                if (!result.IsSuccessStatusCode)
+                {
+                    throw new Exception(json);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Invalid user name or password.", ex);
+            }
+               
+            
             authorizationHeader = json.Split(':')[1].Trim('"', '}');
             httpClient.DefaultRequestHeaders.Add("Authorization", authorizationHeader);
             return json;

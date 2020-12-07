@@ -2,6 +2,7 @@
 using Simple.OData.Client;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace ErpNet.DomainApi.Samples
@@ -104,22 +105,36 @@ namespace ErpNet.DomainApi.Samples
         {
 
             var order = await session.Client.For("Crm_Sales_SalesOrders")
-                .Filter("DocumentDate ge 2012-01-01T00:00:00Z and State eq 'FirmPlanned'")
-                .Select("Id")
+                .Filter("State eq 'FirmPlanned'")
+                .Select("Id", "DocumentType/UserStatuses")
+                .Expand("DocumentType/UserStatuses")
                 .Top(1)
                 .FindEntryAsync();
 
+            var userStatus = order.GetNestedValue("DocumentType.UserStatuses").AsEntityList().FirstOrDefault();
+
+            Dictionary<string, object> args = new Dictionary<string, object>();
+            args["newState"] = "FirmPlanned";
+            if (userStatus != null)
+                args["userStatus"] = new Dictionary<string, object>
+                {
+                    // Simple.OData.Client doesn't allow setting @odata.id property in operation params. 
+                    // So we set Id and @odata.type instead. 
+                    // If @odata.type is ommited the type is inferred from the operation parameter type.
+                    // This doesn't work!!: ["@odata.id"] = userStatus.Annotations().Id
+                    ["Id"] = userStatus.Id()
+                };
 
             await session.Client.For("Crm_Sales_SalesOrders")
                 .Key(order)
                 .Action("ChangeState")
-                .Set(new { newState = "FirmPlanned" })
+                .Set(args)
                 .ExecuteAsync();
         }
 
         public static async Task CreateDocumentAdjustment(ErpSession session)
         {
-            // Begin a front-end transaction.
+            // Begin an api transaction.
             var tr = await session.BeginTransactionAsync(ErpTransactionDataModel.Common, false);
 
             // Ordinary update for released documents is not allowed. 
