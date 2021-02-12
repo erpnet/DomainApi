@@ -207,5 +207,29 @@ namespace ErpNet.DomainApi.Samples
 
             await batch.ExecuteAsync();
         }
+
+        public static async Task CreatePartyContact(ErpSession session)
+        {
+            var party = await session.Client.For("General_Contacts_Parties")
+                .Top(1)
+                .FindEntryAsync();
+
+            var contactMechanism = await session.Client.For("General_Contacts_ContactMechanisms")
+                .Set(new Dictionary<string, object>
+                {
+                    ["ContactMechanismType"] = "Mail",
+                    ["Name"] = "text@mail.com"
+                })
+                .InsertEntryAsync(true);
+            
+
+            var data = new Dictionary<string, object>
+            {
+                ["Party"] = party,
+                ["ContactMechanism"] = contactMechanism
+            };
+
+            var contact = await session.Client.For("General_Contacts_PartyContactMechanisms").Set(data).InsertEntryAsync();
+        }
     }
 }
